@@ -140,11 +140,15 @@ human_positions = []
 # -------------------------
 train_positions = compute_train_positions(trains, time) if not trains.empty else []
 
+display_hour = 9 + time // 60
+display_minute = time % 60
+clock_str = f"{display_hour:02d}:{display_minute:02d}"
+
 # -------------------------
 # Page title
 # -------------------------
 st.title("🚉 Train–Warehouse Simulation")
-st.markdown(f"**Simulation Time: {time} min**")
+st.markdown(f"**Simulation Time: {clock_str} {time} min**")
 
 # -------------------------
 # DIGITAL CLOCK ABOVE GRAPH
