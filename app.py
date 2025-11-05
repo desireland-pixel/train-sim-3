@@ -102,7 +102,7 @@ if generate_clicked:
     if gen_packages:
         packages = pd.DataFrame(gen_packages)
         st.session_state["packages"] = packages
-        msg_generated = f"{len(packages)} packages generated, click 'Assign Packages' to distribute the packages."
+        msg_generated = f"{len(packages)} packages generated, and assigned already!."
     else:
         packages = pd.DataFrame()
         st.session_state.pop("packages", None)
