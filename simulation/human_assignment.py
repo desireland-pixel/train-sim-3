@@ -1,6 +1,4 @@
 # simulation/human_assignment.py
-# This file adapts your existing assignment logic (moved from modules/assignment.py).
-# Keep the algorithm identical, only change function name/exports.
 
 import math
 import numpy as np
