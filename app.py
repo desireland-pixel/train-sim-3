@@ -264,8 +264,8 @@ if ordered_train_ids_with_details:
                 st.session_state["selected_train"] = train_id
     # -------------------------
         
-        selected_train = st.session_state.get("selected_train", list(per_train_detail.keys())[0])
-        detail = per_train_detail.get(selected_train, pd.DataFrame())
+    selected_train = st.session_state.get("selected_train", list(per_train_detail.keys())[0])
+    detail = per_train_detail.get(selected_train, pd.DataFrame())
         if not detail.empty:
             detail_disp = detail.copy()
             detail_disp["packages"] = detail_disp["packages"].apply(lambda lst: ",".join(lst))
