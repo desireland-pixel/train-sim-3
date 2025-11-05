@@ -152,6 +152,16 @@ st.markdown(f"**Simulation Time: {time} min**")
 #sim_clock = (datetime(2000,1,1,9,0) + timedelta(minutes=time)).strftime("%H:%M")
 #st.markdown(f"### Time: {sim_clock}")
 
+#total_minutes = base_minute + current_time
+display_hour = base_hour + current_time // 60
+display_minute = current_time % 60
+clock_str = f"{display_hour:02d}:{display_minute:02d}"
+st.markdown(f"""
+<div style='text-align: right; font-size:48px;'>
+    ⏰ {clock_str}
+</div>
+""", unsafe_allow_html=True)
+
 # -------------------------
 # Status Message - 1
 # -------------------------
