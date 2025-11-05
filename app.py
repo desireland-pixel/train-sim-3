@@ -216,40 +216,55 @@ if "packages" in st.session_state and not st.session_state["packages"].empty:
 if msg_assigned:
     st.success(msg_assigned)
 
-# -------------------------
-# Assignment Summary (train × warehouse)
-# -------------------------
+# -------------------------------------------------------------
+# Common Strategy: Determine the final, ordered list of trains with details
+# -------------------------------------------------------------
+
+ordered_train_ids_with_details = []
+
+if "per_train_detail" in st.session_state:
+    per_train_detail = st.session_state["per_train_detail"]
+    
+    if per_train_detail:
+        # Filter the original list to only include those present in per_train_detail
+        # This preserves the original order (A C B E D) while only selecting the valid ones (e.g., A C B)
+        ordered_train_ids_with_details = [
+            train_id for train_id in train_ids if train_id in per_train_detail
+        ]
+
+# -------------------------------------------------------------
+# Assignment Summary (train × warehouse) - Uses common list
+# -------------------------------------------------------------
 if "summary_df" in st.session_state and not st.session_state["summary_df"].empty:
     st.markdown("**Assignment Summary (train × warehouse)**")
+    
     summary_df_display = st.session_state["summary_df"].fillna(0).set_index('train_id')
     
-    # Preserve train button order
-    train_buttons = list(st.session_state["per_train_detail"].keys())
-    summary_df_display = summary_df_display.reindex(train_buttons)
+    # Use the common strategy list to enforce order
+    summary_df_display = summary_df_display.reindex(ordered_train_ids_with_details)
+    
+    # Optional safety net: remove rows that might be empty if a train_id had no summary data
+    summary_df_display = summary_df_display.dropna(axis=0, how='all')
     
     st.dataframe(summary_df_display)
 
-# -------------------------
-# Train detail buttons
-# -------------------------
-if "per_train_detail" in st.session_state:
-    per_train_detail = st.session_state["per_train_detail"]
-    if per_train_detail:
-        st.markdown("**Select Train to see details:**")
-        
-        # 1. Filter the train_ids list to include only those with details
-        displayable_train_ids = [
-            train_id for train_id in train_ids if train_id in per_train_detail
-        ]
-        # 2. Create columns exactly matching the number of displayable buttons
-        cols = st.columns(len(displayable_train_ids))
-        # 3. Iterate over the FILTERED list to place buttons sequentially in columns
-        for i, train_id in enumerate(displayable_train_ids):
-            # The 'if' check is no longer needed inside the loop
-            with cols[i]:
-                if st.button(f"🚆 {train_id}", key=f"train_btn_{train_id}"):
-                    st.session_state["selected_train"] = train_id
 
+# -------------------------------------------------------------
+# Train detail buttons - Uses common list
+# -------------------------------------------------------------
+if ordered_train_ids_with_details:
+    st.markdown("**Select Train to see details:**")
+    
+    # Create columns exactly matching the common list length
+    cols = st.columns(len(ordered_train_ids_with_details))
+    
+    # Iterate over the common list
+    for i, train_id in enumerate(ordered_train_ids_with_details):
+        with cols[i]:
+            if st.button(f"🚆 {train_id}", key=f"train_btn_{train_id}"):
+                st.session_state["selected_train"] = train_id
+    # -------------------------
+        
         selected_train = st.session_state.get("selected_train", list(per_train_detail.keys())[0])
         detail = per_train_detail.get(selected_train, pd.DataFrame())
         if not detail.empty:
