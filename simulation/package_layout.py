@@ -1,5 +1,5 @@
 # simulation/package_layout.py
-# places packages near warehouses, same logic as before
+
 def compute_package_positions(packages_df, warehouses_df, current_time, offset_x=12, col_spacing=12, row_spacing=25, max_cols=5):
     positions = []
     if packages_df is None or packages_df.empty:
