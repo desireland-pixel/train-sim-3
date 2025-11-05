@@ -41,6 +41,8 @@ platforms = pd.DataFrame({
 # -------------------------
 st.sidebar.header("Simulation Settings")
 
+current_time = st.sidebar.number_input("Current time (minutes)", 0, 60, 0)
+
 # Simulation time slider at top
 if "sim_time" not in st.session_state:
     st.session_state.sim_time = 0
