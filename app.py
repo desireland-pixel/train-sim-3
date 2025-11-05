@@ -144,29 +144,13 @@ train_positions = compute_train_positions(trains, time) if not trains.empty else
 # -------------------------
 display_hour = 9 + time // 60
 display_minute = time % 60
-clock_str = f"⏰ {display_hour:02d}:{display_minute:02d}"
+clock_str = f"{display_hour:02d}:{display_minute:02d}"
 
 # -------------------------
 # Page title
 # -------------------------
 st.title("🚉 Train–Warehouse Simulation")
 st.markdown(f"**Time: {clock_str}**")
-
-# -------------------------
-# DIGITAL CLOCK ABOVE GRAPH
-# -------------------------
-#sim_clock = (datetime(2000,1,1,9,0) + timedelta(minutes=time)).strftime("%H:%M")
-#st.markdown(f"### Time: {sim_clock}")
-
-#total_minutes = base_minute + current_time
-#display_hour = 9 + time // 60
-#display_minute = time % 60
-#clock_str = f"{display_hour:02d}:{display_minute:02d}"
-#st.markdown(f"""
-#<div style='text-align: right; font-size:48px;'>
-#    ⏰ {clock_str}
-#</div>
-#""", unsafe_allow_html=True)
 
 # -------------------------
 # Status Message - 1
@@ -222,10 +206,9 @@ if "packages" in st.session_state and not st.session_state["packages"].empty:
 if msg_assigned:
     st.success(msg_assigned)
 
-# -------------------------------------------------------------
-# Common Strategy: Determine the final, ordered list of trains with details
-# -------------------------------------------------------------
-
+# -----------------------------------------
+# Determine the train list that has orders
+# -----------------------------------------
 ordered_train_ids_with_details = []
 
 if "per_train_detail" in st.session_state:
@@ -237,9 +220,9 @@ if "per_train_detail" in st.session_state:
         ordered_train_ids_with_details = [
             train_id for train_id in train_ids if train_id in per_train_detail
         ]
-
+        
 # -------------------------------------------------------------
-# Assignment Summary (train × warehouse) - Uses common list
+# Assignment Summary (train × warehouse)
 # -------------------------------------------------------------
 if "summary_df" in st.session_state and not st.session_state["summary_df"].empty:
     st.markdown("**Assignment Summary (train × warehouse)**")
@@ -250,7 +233,7 @@ if "summary_df" in st.session_state and not st.session_state["summary_df"].empty
     summary_df_display = summary_df_display.reindex(ordered_train_ids_with_details)
     
     # Optional safety net: remove rows that might be empty if a train_id had no summary data
-    summary_df_display = summary_df_display.dropna(axis=0, how='all')
+    #summary_df_display = summary_df_display.dropna(axis=0, how='all')
     
     st.dataframe(summary_df_display)
 
