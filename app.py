@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from datetime import timedelta, datetime
 
 from simulation.data_loader import load_all
 from simulation.time_controller import clamp_time
@@ -34,15 +35,30 @@ packages = data["packages"]
 persons = data["persons"]
 points = data["points"]
 
-# Default walking speed (units per minute)
-HUMAN_WALK_SPEED = 50
-
 # -----------------------------
 # SIDEBAR CONTROLS
 # -----------------------------
 st.sidebar.header("Simulation Settings")
 
-# Max packages a person can carry
+# Simulation Time Slider at the top
+if "sim_time" not in st.session_state:
+    st.session_state.sim_time = 0
+
+time = st.sidebar.number_input(
+    "Simulation Time (minutes)",
+    min_value=0, max_value=1440,
+    value=st.session_state.sim_time,
+    step=1
+)
+time = clamp_time(time)
+st.session_state.sim_time = time
+
+# Digital Clock
+start_hour = 9
+sim_clock = (datetime(2000,1,1,start_hour,0) + timedelta(minutes=time)).strftime("%H:%M")
+st.sidebar.markdown(f"**Time:** {sim_clock}")
+
+# Max packages per person
 max_packages_per_person = st.sidebar.number_input("Max packages a person", 1, 10, 5)
 
 # Orders per train
@@ -52,6 +68,7 @@ if 'dynamic_orders' not in st.session_state:
 
 train_orders = []
 train_ids = trains['train_id'].tolist()
+orders_changed = False
 for train_id in train_ids:
     input_key = f"orders_for_{train_id}"
     if input_key not in st.session_state.dynamic_orders:
@@ -63,7 +80,20 @@ for train_id in train_ids:
         value=st.session_state.dynamic_orders[input_key],
         key=input_key
     )
+    if current_value != st.session_state.dynamic_orders[input_key]:
+        orders_changed = True
+        st.session_state.dynamic_orders[input_key] = current_value
     train_orders.append(current_value)
+
+# -----------------------------
+# MESSAGES BEFORE ANY ACTION
+# -----------------------------
+if time == 0:
+    st.info("Change simulation time to see the changes")
+if all(o == 0 for o in train_orders):
+    st.warning("Add no of orders on the left side")
+elif orders_changed:
+    st.warning("No of orders have been changed, click 'Generate packages'")
 
 # -----------------------------
 # PACKAGE GENERATION BUTTON
@@ -84,15 +114,24 @@ if st.sidebar.button("Generate Packages"):
                 })
     if gen_packages:
         st.session_state["packages"] = pd.DataFrame(gen_packages)
-        st.success(f"Generated {len(gen_packages)} packages.")
+        st.success(f"{len(gen_packages)} packages generated, click 'Assign packages' to distribute the packages")
+        # Show assignment summary table immediately (empty, as not assigned yet)
+        assignments_df, summary_df, per_train_detail, meta = assign_packages(
+            st.session_state["packages"], trains, warehouses, max_packages_per_person
+        )
+        st.session_state["assignments_df"] = assignments_df
+        st.session_state["summary_df"] = summary_df
+        st.session_state["per_train_detail"] = per_train_detail
+        st.session_state["assignment_meta"] = meta
+        st.markdown("**Assignment Summary (train × warehouse)**")
+        st.dataframe(summary_df.fillna(0).set_index('train_id'))
     else:
         st.warning("No packages generated.")
 
 # -----------------------------
 # ASSIGN PACKAGES BUTTON
 # -----------------------------
-assign_clicked = st.sidebar.button("Assign Packages")
-if assign_clicked:
+if st.sidebar.button("Assign Packages"):
     if "packages" not in st.session_state:
         st.warning("No packages available. Generate packages first.")
     else:
@@ -104,15 +143,6 @@ if assign_clicked:
         st.session_state["per_train_detail"] = per_train_detail
         st.session_state["assignment_meta"] = meta
         st.success(f"Assigned {meta['total_packages']} packages to {meta['total_persons']} persons.")
-
-# -----------------------------
-# SIMULATION TIME SLIDER
-# -----------------------------
-time = st.sidebar.number_input(
-    "Simulation Time (minutes)",
-    min_value=0, max_value=1440, value=0, step=1
-)
-time = clamp_time(time)
 
 # -----------------------------
 # COMPUTE TRAIN POSITIONS
@@ -132,7 +162,7 @@ if "packages" in st.session_state:
 # -----------------------------
 # HUMAN MOVEMENT PLACEHOLDER
 # -----------------------------
-human_positions = []  # future: populate based on assignment + routes
+human_positions = []
 
 # -----------------------------
 # PLOTLY FIGURE
@@ -140,7 +170,7 @@ human_positions = []  # future: populate based on assignment + routes
 fig = go.Figure()
 draw_warehouses(fig, warehouses)
 
-# Draw platforms from fixed coordinates
+# Draw fixed platforms
 platforms = pd.DataFrame({
     'platform': [1, 2, 3, 4, 5],
     'x': [200, 200, 200, 200, 200],
@@ -152,30 +182,27 @@ draw_trains(fig, train_positions)
 draw_packages(fig, package_positions)
 draw_humans(fig, human_positions)
 
+# FIX AXES to prevent expansion animation
+fig.update_xaxes(range=[-50, 300])
+fig.update_yaxes(range=[-50, 200])
+
 fig.update_layout(
     width=900,
     height=600,
+    plot_bgcolor="white",
     xaxis=dict(visible=False),
-    yaxis=dict(visible=False),
-    plot_bgcolor="white"
+    yaxis=dict(visible=False)
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------
-# ASSIGNMENT SUMMARY
-# -----------------------------
-if "summary_df" in st.session_state:
-    summary_df = st.session_state["summary_df"]
-    st.markdown("**Assignment Summary (train × warehouse)**")
-    st.dataframe(summary_df.fillna(0).set_index('train_id'))
-
-# -----------------------------
-# TRAIN BUTTONS + DETAILS
+# TRAIN DETAIL BUTTONS
 # -----------------------------
 if "per_train_detail" in st.session_state:
     per_train_detail = st.session_state["per_train_detail"]
-    train_options = [tid for tid, df in per_train_detail.items() if not df.empty]
+    # Use the sidebar order of train_ids to maintain order
+    train_options = [tid for tid in train_ids if tid in per_train_detail and not per_train_detail[tid].empty]
 
     if train_options:
         st.markdown("**Select Train to see details:**")
