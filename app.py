@@ -183,15 +183,15 @@ draw_packages(fig, package_positions)
 draw_humans(fig, human_positions)
 
 # FIX AXES to prevent expansion animation
-fig.update_xaxes(range=[-50, 300])
-fig.update_yaxes(range=[-50, 200])
-
+fig.update_xaxes(range=[0, 500])
+fig.update_yaxes(range=[-100, 200])
 fig.update_layout(
     width=900,
     height=600,
     plot_bgcolor="white",
     xaxis=dict(visible=False),
-    yaxis=dict(visible=False)
+    yaxis=dict(visible=False),
+    autosize=False
 )
 
 st.plotly_chart(fig, use_container_width=True)
