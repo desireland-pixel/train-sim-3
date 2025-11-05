@@ -82,15 +82,15 @@ msg_generated = ""
 msg_assigned = ""
 
 if time == 0:
-    msg_time = "Change simulation time to see the changes"
+    msg_time = "Change simulation time to see the magic!"
 if all(o == 0 for o in train_orders):
-    msg_orders = "Add no of orders on the left side"
+    msg_orders = "Add no. of order(s) on the left side"
 
 # Detect change in orders
 if "prev_orders" not in st.session_state:
     st.session_state.prev_orders = train_orders.copy()
 elif st.session_state.prev_orders != train_orders:
-    msg_orders = "No of orders have been changed, click 'Generate Packages'"
+    msg_orders = "No. of order(s) has/have been changed, click 'Generate Packages'"
     st.session_state.prev_orders = train_orders.copy()
 
 # -------------------------
