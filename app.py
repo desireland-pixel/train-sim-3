@@ -212,6 +212,12 @@ if msg_assigned:
 if "summary_df" in st.session_state and not st.session_state["summary_df"].empty:
     st.markdown("**Assignment Summary (train × warehouse)**")
     summary_df_display = st.session_state["summary_df"].fillna(0).set_index('train_id')
+    
+    # Preserve train button order
+    train_buttons = list(st.session_state["per_train_detail"].keys())
+    summary_df_display = summary_df_display.reindex(train_buttons)
+    
+    st.dataframe(summary_df_display)
 
 # -------------------------
 # Train detail buttons
