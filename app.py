@@ -163,6 +163,12 @@ sim_clock = (datetime(2000,1,1,9,0) + timedelta(minutes=time)).strftime("%H:%M")
 st.markdown(f"### Time: {sim_clock}")
 
 # -------------------------
+# Status Messages
+# -------------------------
+if msg_time:
+    st.info(msg_time)
+    
+# -------------------------
 # PLOTLY FIGURE
 # -------------------------
 fig = go.Figure()
