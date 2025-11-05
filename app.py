@@ -237,9 +237,9 @@ if "per_train_detail" in st.session_state:
     if per_train_detail:
         st.markdown("**Select Train to see details:**")
         cols = st.columns(len(per_train_detail))
-        for i, train_id in enumerate(train_ids):
+        for len(per_train_detail), train_id in enumerate(train_ids):
             if train_id in per_train_detail:
-                with cols[i]:
+                with cols[len(per_train_detail)]:
                     if st.button(f"🚆 {train_id}", key=f"train_btn_{train_id}"):
                         st.session_state["selected_train"] = train_id
 
