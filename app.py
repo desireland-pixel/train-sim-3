@@ -154,7 +154,7 @@ train_positions = compute_train_positions(trains, time) if not trains.empty else
 # Page title
 # -------------------------
 st.title("🚉 Train–Warehouse Simulation")
-st.markdown(f"**Simulation Time: {current_time} min**")
+#st.markdown(f"**Simulation Time: {current_time} min**")
 
 # -------------------------
 # DIGITAL CLOCK ABOVE GRAPH
