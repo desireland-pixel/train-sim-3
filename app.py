@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 from simulation.data_loader import load_all
-from simulation.time_controller import clamp_time
+#from simulation.time_controller import clamp_time
 from simulation.train_movement import compute_train_positions
 from simulation.human_assignment import assign_packages
 from simulation.human_routes import build_route, interpolate_position
