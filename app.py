@@ -266,14 +266,14 @@ if ordered_train_ids_with_details:
         
     selected_train = st.session_state.get("selected_train", list(per_train_detail.keys())[0])
     detail = per_train_detail.get(selected_train, pd.DataFrame())
-        if not detail.empty:
-            detail_disp = detail.copy()
-            detail_disp["packages"] = detail_disp["packages"].apply(lambda lst: ",".join(lst))
-            detail_disp = detail_disp.rename(columns={
-                "warehouse": "Warehouse",
-                "person": "Person",
-                "packages": "Package IDs",
-                "count": "Count"
-            })
-            st.markdown(f"**Details for {selected_train}:**")
-            st.dataframe(detail_disp)
+    if not detail.empty:
+        detail_disp = detail.copy()
+        detail_disp["packages"] = detail_disp["packages"].apply(lambda lst: ",".join(lst))
+        detail_disp = detail_disp.rename(columns={
+            "warehouse": "Warehouse",
+            "person": "Person",
+            "packages": "Package IDs",
+            "count": "Count"
+        })
+        st.markdown(f"**Details for {selected_train}:**")
+        st.dataframe(detail_disp)
