@@ -44,7 +44,7 @@ def draw_packages(fig, package_positions):
             marker=dict(size=8, color="#D2B48C", symbol="square",
                         line=dict(color="black", width=0.25)),
             name="Packages",
-            showlegend=True
+            showlegend=(len(fig.data) == 3)
         ))
 
 def draw_humans(fig, human_positions):
