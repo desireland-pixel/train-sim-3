@@ -235,22 +235,18 @@ if "per_train_detail" in st.session_state:
 # -------------------------------------------------------------
 # Assignment Summary (train × warehouse) - Uses common list
 # -------------------------------------------------------------
-current_train = st.session_state.get("selected_train")
-
-if current_train and "summary_df" in st.session_state and not st.session_state["summary_df"].empty:
-    st.markdown(f"**Assignment Summary for Train: {current_train}**")
+if "summary_df" in st.session_state and not st.session_state["summary_df"].empty:
+    st.markdown("**Assignment Summary (train × warehouse)**")
     
-    summary_df = st.session_state["summary_df"].fillna(0)
+    summary_df_display = st.session_state["summary_df"].fillna(0).set_index('train_id')
     
-    # Filter the main DataFrame to ONLY include the currently selected train
-    single_train_df = summary_df[summary_df['train_id'] == current_train]
+    # Use the common strategy list to enforce order
+    summary_df_display = summary_df_display.reindex(ordered_train_ids_with_details)
     
-    # Set the index for display
-    summary_df_display = single_train_df.set_index('train_id')
+    # Optional safety net: remove rows that might be empty if a train_id had no summary data
+    summary_df_display = summary_df_display.dropna(axis=0, how='all')
     
-    # Display the resulting single-row dataframe
     st.dataframe(summary_df_display)
-
 
 # -------------------------------------------------------------
 # Train detail buttons - Uses common list
