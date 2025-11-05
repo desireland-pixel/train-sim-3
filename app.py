@@ -51,7 +51,7 @@ time = st.sidebar.number_input(
     value=st.session_state.sim_time, step=1
 )
 st.session_state.sim_time = time
-time = current_time(time)
+time = Current_time(current_time)
 
 max_packages_per_person = st.sidebar.number_input("Max packages a person can carry", 1, 10, 5)
 
