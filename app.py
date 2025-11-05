@@ -42,12 +42,12 @@ platforms = pd.DataFrame({
 st.sidebar.header("Simulation Settings")
 
 # Simulation time slider at top
-#if "sim_time" not in st.session_state:
-#    st.session_state.sim_time = 0
-#time = st.sidebar.number_input(
-#    "Simulation Time (minutes)", min_value=0, max_value=1440,
-#    value=st.session_state.sim_time, step=1
-#)
+if "sim_time" not in st.session_state:
+    st.session_state.sim_time = 0
+time = st.sidebar.number_input(
+    "Simulation Time (minutes)", min_value=0, max_value=1440,
+    value=st.session_state.sim_time, step=1
+)
 st.session_state.sim_time = time
 time = clamp_time(time)
 
