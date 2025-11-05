@@ -44,14 +44,14 @@ st.sidebar.header("Simulation Settings")
 current_time = st.sidebar.number_input("Current time (minutes)", 0, 60, 0)
 
 # Simulation time slider at top
-if "sim_time" not in st.session_state:
-    st.session_state.sim_time = 0
-time = st.sidebar.number_input(
-    "Simulation Time (minutes)", min_value=0, max_value=1440,
-    value=st.session_state.sim_time, step=1
-)
-st.session_state.sim_time = time
-time = Current_time(current_time)
+#if "sim_time" not in st.session_state:
+#    st.session_state.sim_time = 0
+#time = st.sidebar.number_input(
+#    "Simulation Time (minutes)", min_value=0, max_value=1440,
+#    value=st.session_state.sim_time, step=1
+#)
+#st.session_state.sim_time = time
+#time = Current_time(time)
 
 max_packages_per_person = st.sidebar.number_input("Max packages a person can carry", 1, 10, 5)
 
