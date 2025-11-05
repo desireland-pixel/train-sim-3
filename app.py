@@ -48,7 +48,7 @@ max_packages_per_person = st.sidebar.number_input(
 
 # Simulation time slider (1 min step, with + / – buttons)
 current_time = st.sidebar.number_input(
-    "Simulation Time (minutes)", min_value=0, max_value=1440, value=100, step=1
+    "Simulation Time (minutes)", min_value=0, max_value=1440, value=0, step=1
 )
 current_time = clamp_time(current_time)
 
