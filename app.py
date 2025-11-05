@@ -1,13 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
 
-platforms = pd.DataFrame({
-    'platform': [1,2,3,4,5],
-    'x': [200,200,200,200,200],
-    'y': [150,100,50,0,-50]
-})
-draw_platforms(fig, platforms)
-
 from simulation.data_loader import load_all
 from simulation.time_controller import clamp_time
 from simulation.train_movement import compute_train_positions
@@ -21,6 +14,13 @@ from simulation.visual_elements import (
     draw_packages,
     draw_humans
 )
+
+platforms = pd.DataFrame({
+    'platform': [1,2,3,4,5],
+    'x': [200,200,200,200,200],
+    'y': [150,100,50,0,-50]
+})
+draw_platforms(fig, platforms)
 
 # --------------------------------------------------------
 # STREAMLIT UI
