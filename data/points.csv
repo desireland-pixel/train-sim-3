@@ -1,0 +1,6 @@
+name,x,y,zone
+WaitingArea,350,50,
+StationEntry,250,50,
+Zone1Entry,425,165,Zone1
+Zone2Entry,435,0,Zone2
+Zone3Entry,425,-50,Zone3
