@@ -211,7 +211,7 @@ if msg_assigned:
 # -------------------------
 if "summary_df" in st.session_state and not st.session_state["summary_df"].empty:
     st.markdown("**Assignment Summary (train × warehouse)**")
-    st.dataframe(st.session_state["summary_df"].fillna(0).set_index('train_id'))
+    summary_df_display = st.session_state["summary_df"].fillna(0).set_index('train_id')
 
 # -------------------------
 # Train detail buttons
