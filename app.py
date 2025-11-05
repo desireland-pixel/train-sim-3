@@ -232,9 +232,6 @@ if "summary_df" in st.session_state and not st.session_state["summary_df"].empty
     # Use the common strategy list to enforce order
     summary_df_display = summary_df_display.reindex(ordered_train_ids_with_details)
     
-    # Optional safety net: remove rows that might be empty if a train_id had no summary data
-    #summary_df_display = summary_df_display.dropna(axis=0, how='all')
-    
     st.dataframe(summary_df_display)
 
 # -------------------------------------------------------------
@@ -251,7 +248,6 @@ if ordered_train_ids_with_details:
         with cols[i]:
             if st.button(f"🚆 {train_id}", key=f"train_btn_{train_id}"):
                 st.session_state["selected_train"] = train_id
-    # -------------------------
         
     selected_train = st.session_state.get("selected_train", list(per_train_detail.keys())[0])
     detail = per_train_detail.get(selected_train, pd.DataFrame())
