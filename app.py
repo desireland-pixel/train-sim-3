@@ -7,7 +7,6 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 from simulation.data_loader import load_all
-#from simulation.time_controller import clamp_time
 from simulation.train_movement import compute_train_positions
 from simulation.human_assignment import assign_packages
 from simulation.human_routes import build_route, interpolate_position
@@ -148,7 +147,7 @@ clock_str = f"{display_hour:02d}:{display_minute:02d}"
 # Page title
 # -------------------------
 st.title("🚉 Train–Warehouse Simulation")
-st.markdown(f"**Simulation Time: {clock_str} {time} min**")
+st.markdown(f"**Time: {clock_str}**")
 
 # -------------------------
 # DIGITAL CLOCK ABOVE GRAPH
