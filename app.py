@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
@@ -77,7 +78,7 @@ human_positions = []  # <--- stays empty for now (no movement yet)
 # --------------------------------------------------------
 fig = go.Figure()
 draw_warehouses(fig, warehouses)
-draw_platforms(fig, trains)  # platforms are in trains CSV in your version
+draw_platforms(fig, platforms)  # platforms are in trains CSV in your version
 draw_trains(fig, train_positions)
 draw_packages(fig, package_positions)
 draw_humans(fig, human_positions)
