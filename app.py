@@ -236,12 +236,19 @@ if "per_train_detail" in st.session_state:
     per_train_detail = st.session_state["per_train_detail"]
     if per_train_detail:
         st.markdown("**Select Train to see details:**")
-        cols = st.columns(len(per_train_detail))
-        for i, train_id in enumerate(train_ids):
-            if train_id in per_train_detail:
-                with cols[i]:
-                    if st.button(f"🚆 {train_id}", key=f"train_btn_{train_id}"):
-                        st.session_state["selected_train"] = train_id
+        
+        # 1. Filter the train_ids list to include only those with details
+        displayable_train_ids = [
+            train_id for train_id in train_ids if train_id in per_train_detail
+        ]
+        # 2. Create columns exactly matching the number of displayable buttons
+        cols = st.columns(len(displayable_train_ids))
+        # 3. Iterate over the FILTERED list to place buttons sequentially in columns
+        for i, train_id in enumerate(displayable_train_ids):
+            # The 'if' check is no longer needed inside the loop
+            with cols[i]:
+                if st.button(f"🚆 {train_id}", key=f"train_btn_{train_id}"):
+                    st.session_state["selected_train"] = train_id
 
         selected_train = st.session_state.get("selected_train", list(per_train_detail.keys())[0])
         detail = per_train_detail.get(selected_train, pd.DataFrame())
