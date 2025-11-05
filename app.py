@@ -58,7 +58,7 @@ else:
 # --------------------------------------------------------
 # Package Placement on Map
 # --------------------------------------------------------
-package_positions = compute_package_positions(assignments_df, warehouses, time)
+package_positions = compute_package_positions(packages, warehouses, time)
 
 # --------------------------------------------------------
 # Human Movement (future: when we activate routes)
