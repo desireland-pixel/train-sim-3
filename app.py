@@ -165,14 +165,27 @@ st.plotly_chart(fig, use_container_width=True)
 # SUMMARY / ASSIGNMENT DISPLAY
 # -------------------------
 if "summary_df" in st.session_state:
+    summary_df = st.session_state["summary_df"]
     st.markdown("**Assignment Summary (train × warehouse)**")
-    st.dataframe(st.session_state["summary_df"].fillna(0).set_index('train_id'))
+    st.dataframe(summary_df.fillna(0).set_index('train_id'))
 
 if "per_train_detail" in st.session_state:
-    train_options = list(st.session_state["per_train_detail"].keys())
+    per_train_detail = st.session_state["per_train_detail"]
+
+    # Only include trains that actually have assignments
+    train_options = [tid for tid, df in per_train_detail.items() if not df.empty]
+
     if train_options:
-        selected_train = st.selectbox("Select Train for Details", train_options)
-        detail = st.session_state["per_train_detail"][selected_train]
+        st.markdown("**Select Train to see details:**")
+        cols = st.columns(len(train_options))
+        for i, train_id in enumerate(train_options):
+            with cols[i]:
+                if st.button(f"🚆 {train_id}", key=f"train_{train_id}"):
+                    st.session_state["selected_train"] = train_id
+
+        # Show details for selected train
+        selected_train = st.session_state.get("selected_train", train_options[0])
+        detail = per_train_detail[selected_train]
         if not detail.empty:
             detail_disp = detail.copy()
             detail_disp["packages"] = detail_disp["packages"].apply(lambda lst: ",".join(lst))
@@ -182,4 +195,6 @@ if "per_train_detail" in st.session_state:
                 "packages": "Package IDs",
                 "count": "Count"
             })
+            st.markdown(f"**Details for {selected_train}:**")
             st.dataframe(detail_disp)
+
