@@ -139,9 +139,12 @@ human_positions = []
 # -------------------------
 train_positions = compute_train_positions(trains, time) if not trains.empty else []
 
+# -------------------------
+# CLOCK Set-up in HH:MM
+# -------------------------
 display_hour = 9 + time // 60
 display_minute = time % 60
-clock_str = f"{display_hour:02d}:{display_minute:02d}"
+clock_str = f"⏰ {display_hour:02d}:{display_minute:02d}"
 
 # -------------------------
 # Page title
