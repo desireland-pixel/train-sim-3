@@ -244,7 +244,7 @@ if "summary_df" in st.session_state and not st.session_state["summary_df"].empty
     summary_df_display = summary_df_display.reindex(ordered_train_ids_with_details)
     
     # Optional safety net: remove rows that might be empty if a train_id had no summary data
-    summary_df_display = summary_df_display.dropna(axis=0, how='all')
+    #summary_df_display = summary_df_display.dropna(axis=0, how='all')
     
     st.dataframe(summary_df_display)
 
