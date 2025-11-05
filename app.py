@@ -40,19 +40,7 @@ platforms = pd.DataFrame({
 # Sidebar controls
 # -------------------------
 st.sidebar.header("Simulation Settings")
-
-time = st.sidebar.number_input("Current time (minutes)", 0, 60, 0)
-
-# Simulation time slider at top
-#if "sim_time" not in st.session_state:
-#    st.session_state.sim_time = 0
-#time = st.sidebar.number_input(
-#    "Simulation Time (minutes)", min_value=0, max_value=1440,
-#    value=st.session_state.sim_time, step=1
-#)
-#st.session_state.sim_time = time
-#time = Current_time(time)
-
+time = st.sidebar.number_input("Simulation time (minutes)", 0, 60, 0) #time control
 max_packages_per_person = st.sidebar.number_input("Max packages a person can carry", 1, 10, 5)
 
 st.sidebar.markdown("### Orders per Train")
@@ -161,8 +149,8 @@ st.markdown(f"**Simulation Time: {time} min**")
 # -------------------------
 # DIGITAL CLOCK ABOVE GRAPH
 # -------------------------
-sim_clock = (datetime(2000,1,1,9,0) + timedelta(minutes=time)).strftime("%H:%M")
-st.markdown(f"### Time: {sim_clock}")
+#sim_clock = (datetime(2000,1,1,9,0) + timedelta(minutes=time)).strftime("%H:%M")
+#st.markdown(f"### Time: {sim_clock}")
 
 # -------------------------
 # Status Message - 1
