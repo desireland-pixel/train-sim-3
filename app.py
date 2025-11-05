@@ -42,12 +42,12 @@ platforms = pd.DataFrame({
 st.sidebar.header("Simulation Settings")
 
 # Simulation time slider at top
-if "sim_time" not in st.session_state:
-    st.session_state.sim_time = 0
-time = st.sidebar.number_input(
-    "Simulation Time (minutes)", min_value=0, max_value=1440,
-    value=st.session_state.sim_time, step=1
-)
+#if "sim_time" not in st.session_state:
+#    st.session_state.sim_time = 0
+#time = st.sidebar.number_input(
+#    "Simulation Time (minutes)", min_value=0, max_value=1440,
+#    value=st.session_state.sim_time, step=1
+#)
 st.session_state.sim_time = time
 time = clamp_time(time)
 
@@ -163,7 +163,7 @@ sim_clock = (datetime(2000,1,1,9,0) + timedelta(minutes=time)).strftime("%H:%M")
 st.markdown(f"### Time: {sim_clock}")
 
 # -------------------------
-# Status Messages
+# Status Message - 1
 # -------------------------
 if msg_time:
     st.info(msg_time)
@@ -192,10 +192,8 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------
-# Status Messages
+# Status Message - 2
 # -------------------------
-if msg_time:
-    st.info(msg_time)
 if msg_orders:
     st.warning(msg_orders)
 if msg_generated:
