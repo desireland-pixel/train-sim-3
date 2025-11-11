@@ -1,11 +1,12 @@
 # simulation/human_assignment.py
 
 import math
+import numpy as np
 import pandas as pd
 from collections import defaultdict
+from itertools import combinations
 
 def infer_train_id_from_pkg(pkg_id, trains_df):
-    """Infer train ID from package ID prefix."""
     try:
         prefix = str(pkg_id)[:2]
         idx = int(prefix)
@@ -16,203 +17,178 @@ def infer_train_id_from_pkg(pkg_id, trains_df):
     return "UNKNOWN"
 
 def assign_packages(packages_df, trains_df, warehouses_df, capacity):
-    """
-    Assign packages to humans based on workshop -> zone -> zone+cluster -> cluster priority.
-    Capacity is max packages per person.
-    """
     packages = packages_df.copy().reset_index(drop=True)
-    warehouses = warehouses_df.copy().reset_index(drop=True)
     trains = trains_df.copy().reset_index(drop=True)
+    warehouses = warehouses_df.copy().reset_index(drop=True)
 
     packages['package_id'] = packages['package_id'].astype(str)
     packages['warehouse_id'] = packages['warehouse_id'].astype(str)
     packages['train_id'] = packages['package_id'].apply(lambda pid: infer_train_id_from_pkg(pid, trains))
 
     all_assignments = []
-
-    # Group packages by train
     train_groups = packages.groupby('train_id')
 
     for tid, grp in train_groups:
-        # Step 0: Workshop allocation (if any warehouse has >= capacity)
+        if len(grp) == 0:
+            continue
+
+        # --- Step 0: Workshop direct allocation ---
         wh_to_pkgs = defaultdict(list)
         for _, row in grp.iterrows():
             wh_to_pkgs[row['warehouse_id']].append(row['package_id'])
 
-        assigned_packages = set()
-        person_idx = 0
-        persons_train = []
+        workshop_assignments = []
+        remaining_wh = {}
+        person_counter = 1
 
-        # Step 0: Direct warehouse allocations
-        step0_assignments = []
-        remaining_wh_packages = {}
-        for wh_id, pkgs in wh_to_pkgs.items():
-            if len(pkgs) >= capacity:
-                n_persons = len(pkgs) // capacity
-                for i in range(n_persons):
-                    person = f"Hc{person_idx+1}_{tid}"
-                    assigned = pkgs[i*capacity:(i+1)*capacity]
-                    step0_assignments.append({
-                        'person': person,
-                        'packages': assigned,
-                        'warehouses': [wh_id]
+        for wh in warehouses['warehouse_id']:
+            pkgs = wh_to_pkgs.get(wh, [])
+            full_batches = len(pkgs) // capacity
+            leftover = len(pkgs) % capacity
+            # assign full batches
+            for b in range(full_batches):
+                batch_pkgs = pkgs[b*capacity:(b+1)*capacity]
+                person = f"Hc{person_counter}_{tid}"
+                for p in batch_pkgs:
+                    workshop_assignments.append({
+                        'package_id': p, 'warehouse_id': wh, 'train_id': tid, 'person': person
                     })
-                    assigned_packages.update(assigned)
-                    person_idx += 1
-                leftover = pkgs[n_persons*capacity:]
-                if leftover:
-                    remaining_wh_packages[wh_id] = leftover
-            else:
-                remaining_wh_packages[wh_id] = pkgs.copy()
+                person_counter += 1
+            # leftover packages
+            if leftover > 0:
+                remaining_wh[wh] = pkgs[-leftover:]
 
-        # Step 1: Compute LB and zone needs
-        total_remaining = sum(len(pkgs) for pkgs in remaining_wh_packages.values())
+        # If no remaining packages, Step 0 solved all
+        if not remaining_wh:
+            all_assignments.extend(workshop_assignments)
+            continue
+
+        # --- Step 1: Compute LB ---
+        total_remaining = sum(len(pkgs) for pkgs in remaining_wh.values())
         LB = math.ceil(total_remaining / capacity)
 
-        # Organize remaining warehouses by zone
+        # --- Step 2: Zone mapping ---
         zone_map = defaultdict(list)
-        wh_zone_map = {}
-        wh_cluster_map = {}
-        for _, w in warehouses.iterrows():
-            wh_zone_map[w['warehouse_id']] = w['zone']
-            wh_cluster_map[w['warehouse_id']] = w['cluster']
+        cluster_map = defaultdict(list)
+        for wh in remaining_wh:
+            wh_info = warehouses[warehouses['warehouse_id']==wh].iloc[0]
+            zone_map[wh_info.zone].append((wh, remaining_wh[wh]))
+            cluster_map[wh_info.cluster].append((wh, remaining_wh[wh]))
 
-        for wh, pkgs in remaining_wh_packages.items():
-            zone_map[wh_zone_map[wh]].append((wh, pkgs))
+        # --- Step 3: Compute Z_cost ---
+        zone_needs = {z: math.ceil(sum(len(p) for _,p in lst)/capacity) for z,lst in zone_map.items()}
+        Z_cost = sum(zone_needs.values())
 
-        # Step 2: Zone allocation
-        zone_assignments = []
-        for zone, wh_list in zone_map.items():
-            # Assign whole warehouses to person until capacity
-            zone_person_pkgs = []
-            current_pkg_count = 0
-            person = f"Hc{person_idx+1}_{tid}"
-            current_wh = []
-            for wh_id, pkgs in wh_list:
-                # Skip already assigned
-                pkgs_to_assign = [p for p in pkgs if p not in assigned_packages]
-                if not pkgs_to_assign:
-                    continue
-                if current_pkg_count + len(pkgs_to_assign) <= capacity:
-                    current_pkg_count += len(pkgs_to_assign)
-                    zone_person_pkgs.extend(pkgs_to_assign)
-                    current_wh.append(wh_id)
-                    assigned_packages.update(pkgs_to_assign)
-                else:
-                    # Cannot fit all packages, assign current person and start new
-                    if zone_person_pkgs:
-                        zone_assignments.append({
-                            'person': person,
-                            'packages': zone_person_pkgs,
-                            'warehouses': current_wh.copy()
-                        })
-                        person_idx += 1
-                    # Start new person
-                    person = f"Hc{person_idx+1}_{tid}"
-                    zone_person_pkgs = pkgs_to_assign.copy()
-                    current_pkg_count = len(pkgs_to_assign)
-                    current_wh = [wh_id]
-                    assigned_packages.update(pkgs_to_assign)
-            if zone_person_pkgs:
-                zone_assignments.append({
-                    'person': person,
-                    'packages': zone_person_pkgs,
-                    'warehouses': current_wh.copy()
-                })
-                person_idx += 1
+        # --- Step 4: Assign persons per zone if possible ---
+        final_assignments = workshop_assignments.copy()
+        assigned_wh = set()
 
-        # Combine step0 and zone allocations
-        all_person_allocations = step0_assignments + zone_assignments
+        if Z_cost <= LB:
+            # simple zone allocation
+            for z, wh_list in zone_map.items():
+                for wh, pkgs in wh_list:
+                    if not pkgs:
+                        continue
+                    person = f"Hc{person_counter}_{tid}"
+                    for p in pkgs:
+                        final_assignments.append({'package_id': p, 'warehouse_id': wh, 'train_id': tid, 'person': person})
+                    person_counter += 1
+                    assigned_wh.add(wh)
+        else:
+            # Step 4a: Try Zone+Cluster combinations
+            best_combo = None
+            best_total_persons = Z_cost
+            zone_items = list(zone_map.items())
+            cluster_items = list(cluster_map.items())
 
-        # Step 3: Cluster allocation (only if LB not satisfied)
-        total_assigned = sum(len(a['packages']) for a in all_person_allocations)
-        if total_assigned < len(grp):
-            # Remaining packages
-            remaining_pkgs = [p for p in grp['package_id'].tolist() if p not in assigned_packages]
-            if remaining_pkgs:
-                cluster_map = defaultdict(list)
-                for wh, pkgs in remaining_wh_packages.items():
-                    unassigned = [p for p in pkgs if p not in assigned_packages]
-                    if unassigned:
-                        cluster_map[wh_cluster_map[wh]].append((wh, unassigned))
-                # Assign per cluster
-                for cluster, wh_list in cluster_map.items():
-                    cluster_person_pkgs = []
-                    current_pkg_count = 0
-                    person = f"Hc{person_idx+1}_{tid}"
-                    current_wh = []
-                    for wh_id, pkgs in wh_list:
-                        pkgs_to_assign = [p for p in pkgs if p not in assigned_packages]
-                        if not pkgs_to_assign:
+            for z_num in range(1, len(zone_items)+1):
+                for c_num in range(1, len(cluster_items)+1):
+                    for z_combo in combinations(zone_items, z_num):
+                        for c_combo in combinations(cluster_items, c_num):
+                            # skip if overlapping warehouses
+                            z_whs = set()
+                            for _, wl in z_combo:
+                                z_whs.update([wh for wh,_ in wl])
+                            c_whs = set()
+                            for _, wl in c_combo:
+                                c_whs.update([wh for wh,_ in wl])
+                            if z_whs & c_whs:
+                                continue
+                            # compute total persons
+                            total_persons_combo = 0
+                            for _, wl in list(z_combo)+list(c_combo):
+                                total_persons_combo += sum(math.ceil(len(p)/capacity) for _,p in wl)
+                            if total_persons_combo < best_total_persons:
+                                best_total_persons = total_persons_combo
+                                best_combo = (z_combo, c_combo)
+
+            if best_combo:
+                z_combo, c_combo = best_combo
+                # assign persons
+                for _, wl in list(z_combo)+list(c_combo):
+                    for wh, pkgs in wl:
+                        if not pkgs:
                             continue
-                        if current_pkg_count + len(pkgs_to_assign) <= capacity:
-                            current_pkg_count += len(pkgs_to_assign)
-                            cluster_person_pkgs.extend(pkgs_to_assign)
-                            current_wh.append(wh_id)
-                            assigned_packages.update(pkgs_to_assign)
-                        else:
-                            # Assign current person and start new
-                            if cluster_person_pkgs:
-                                all_person_allocations.append({
-                                    'person': person,
-                                    'packages': cluster_person_pkgs,
-                                    'warehouses': current_wh.copy()
-                                })
-                                person_idx += 1
-                            # Start new person
-                            person = f"Hc{person_idx+1}_{tid}"
-                            cluster_person_pkgs = pkgs_to_assign.copy()
-                            current_pkg_count = len(pkgs_to_assign)
-                            current_wh = [wh_id]
-                            assigned_packages.update(pkgs_to_assign)
-                    if cluster_person_pkgs:
-                        all_person_allocations.append({
-                            'person': person,
-                            'packages': cluster_person_pkgs,
-                            'warehouses': current_wh.copy()
-                        })
-                        person_idx += 1
+                        person = f"Hc{person_counter}_{tid}"
+                        for p in pkgs:
+                            final_assignments.append({'package_id': p, 'warehouse_id': wh, 'train_id': tid, 'person': person})
+                        person_counter += 1
+                        assigned_wh.add(wh)
+            else:
+                # fallback: assign per zone in CSV order
+                for z, wh_list in zone_map.items():
+                    for wh, pkgs in wh_list:
+                        if not pkgs:
+                            continue
+                        person = f"Hc{person_counter}_{tid}"
+                        for p in pkgs:
+                            final_assignments.append({'package_id': p, 'warehouse_id': wh, 'train_id': tid, 'person': person})
+                        person_counter += 1
+                        assigned_wh.add(wh)
 
-        # Build assignments_df
-        for alloc in all_person_allocations:
-            for wh in alloc['warehouses']:
-                pkgs_in_wh = [p for p in alloc['packages'] if p in wh_to_pkgs.get(wh, [])]
-                if not pkgs_in_wh:
-                    continue
-                for p in pkgs_in_wh:
-                    all_assignments.append({
-                        'package_id': p,
-                        'warehouse_id': wh,
-                        'train_id': tid,
-                        'person': alloc['person']
-                    })
+        # Step 5: Any leftover warehouses not assigned? (Cluster-only allocation)
+        for wh, pkgs in remaining_wh.items():
+            if wh in assigned_wh:
+                continue
+            if not pkgs:
+                continue
+            person = f"Hc{person_counter}_{tid}"
+            for p in pkgs:
+                final_assignments.append({'package_id': p, 'warehouse_id': wh, 'train_id': tid, 'person': person})
+            person_counter += 1
 
+        all_assignments.extend(final_assignments)
+
+    # --- Prepare output DataFrames ---
     assignments_df = pd.DataFrame(all_assignments)
+    if assignments_df.empty:
+        summary_df = pd.DataFrame()
+        per_train_detail = {}
+        metadata = {'total_packages': 0, 'capacity': capacity, 'total_persons': 0}
+        return assignments_df, summary_df, per_train_detail, metadata
 
-    # Build summary and per_train_detail
-    summary_df = pd.DataFrame()
+    summary_df = assignments_df.groupby(["train_id", "warehouse_id"]).size().unstack(fill_value=0)
+    all_warehouses = list(warehouses_df["warehouse_id"])
+    summary_df = summary_df.reindex(columns=all_warehouses, fill_value=0)
+    summary_df = summary_df / capacity
+    summary_df = summary_df.reset_index()
+
+    warehouse_cols = [c for c in summary_df.columns if str(c).startswith("W")]
+    summary_df["Total Persons"] = np.ceil(summary_df[warehouse_cols].sum(axis=1)).astype(int)
+    summary_df[warehouse_cols] = summary_df[warehouse_cols].round(2)
+
     per_train_detail = {}
-    if not assignments_df.empty:
-        summary_df = assignments_df.groupby(['train_id', 'warehouse_id']).size().unstack(fill_value=0)
-        all_warehouses = list(warehouses['warehouse_id'])
-        summary_df = summary_df.reindex(columns=all_warehouses, fill_value=0)
-        summary_df = summary_df / capacity
-        summary_df = summary_df.reset_index()
-        warehouse_cols = [c for c in summary_df.columns if str(c).startswith('W')]
-        summary_df['Total Persons'] = summary_df[warehouse_cols].sum(axis=1).apply(math.ceil).astype(int)
-        summary_df[warehouse_cols] = summary_df[warehouse_cols].round(2)
-
-        for tid, grp in assignments_df.groupby('train_id'):
-            detail_rows = []
-            for (wh, person), g in grp.groupby(['warehouse_id', 'person']):
-                pkgs = list(g['package_id'])
-                detail_rows.append({'warehouse': wh, 'person': person, 'packages': pkgs, 'count': len(pkgs)})
-            per_train_detail[tid] = pd.DataFrame(detail_rows).sort_values(['warehouse', 'person']).reset_index(drop=True)
+    for tid, grp in assignments_df.groupby('train_id'):
+        detail_rows = []
+        for (wh, person), g in grp.groupby(['warehouse_id', 'person']):
+            pkgs = list(g['package_id'])
+            detail_rows.append({'warehouse': wh, 'person': person, 'packages': pkgs, 'count': len(pkgs)})
+        per_train_detail[tid] = pd.DataFrame(detail_rows).sort_values(['warehouse', 'person']).reset_index(drop=True)
 
     metadata = {
         'total_packages': len(packages),
         'capacity': capacity,
-        'total_persons': len(set(assignments_df['person'])) if not assignments_df.empty else 0
+        'total_persons': assignments_df['person'].nunique()
     }
 
     return assignments_df, summary_df, per_train_detail, metadata
