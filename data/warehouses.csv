@@ -1,3 +1,5 @@
+#data/warehouses.csv
+
 warehouse_id,x,y,zone,cluster,walk_time_to_platform
 W1,300,180,ZoneA,Cluster1,3
 W2,400,180,ZoneA,Cluster2,4
