@@ -140,6 +140,11 @@ def assign_packages(packages_df, trains_df, warehouses_df, capacity):
                 comb_need[comb_key] = math.ceil(cnt / capacity)
             Comb_cost = sum(comb_need.values())
 
+            # --- DEBUG: show cost comparison before deciding allocation ---
+            print(f"[DEBUG] Train: {tid}")
+            print(f"  LB={LB}, Z_cost={Z_cost}, C_cost={C_cost}, Comb_cost={Comb_cost}")
+            print(f"  Decision → ", end="")
+
             # --- Updated decision logic (corrected) ---
             if C_cost < Z_cost:
                 # choose cluster allocation
