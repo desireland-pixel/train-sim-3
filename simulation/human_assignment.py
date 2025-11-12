@@ -156,20 +156,92 @@ def assign_packages(packages_df, trains_df, warehouses_df, capacity):
                 for zone, whs in zone_wh_map.items():
                     allocation_plan.append(('zone', zone, whs, zone_need[zone]))
 
-        # Step 4: Allocate persons based on allocation plan
+        # Step 4: Allocate persons based on allocation plan (enhanced inside-zone logic)
         for alloc_type, target, whs, num_persons in allocation_plan:
-            for i in range(num_persons):
+            wh_pkg_map = {wh: remaining_wh.get(wh, []) for wh in whs if remaining_wh.get(wh)}
+            if not wh_pkg_map:
+                continue
+
+            nonzero_wh_count = len(wh_pkg_map)
+
+            # ── Inside-zone/cluster allocation decision tree ──
+            if num_persons == 1:
+                # Single person handles all
+                all_pkgs = []
+                for pkgs in wh_pkg_map.values():
+                    all_pkgs += pkgs
                 person = f"Hc{person_idx + 1}_{tid}"
-                whs_sorted = sorted(whs)
-                for wh in whs_sorted:
-                    for pkg in remaining_wh[wh]:
+                for wh, pkgs in wh_pkg_map.items():
+                    for p in pkgs:
                         assignments_train.append({
-                            'package_id': pkg,
+                            'package_id': p,
                             'warehouse_id': wh,
                             'train_id': tid,
                             'person': person
                         })
                 person_idx += 1
+
+            elif nonzero_wh_count == num_persons:
+                # One person per nonzero warehouse
+                for wh, pkgs in wh_pkg_map.items():
+                    person = f"Hc{person_idx + 1}_{tid}"
+                    for p in pkgs:
+                        assignments_train.append({
+                            'package_id': p,
+                            'warehouse_id': wh,
+                            'train_id': tid,
+                            'person': person
+                        })
+                    person_idx += 1
+
+            else:
+                # Greedy merge/split allocation
+                whs_sorted = sorted(wh_pkg_map.keys())
+                current_pkgs = []
+                current_whs = []
+                current_count = 0
+                for wh in whs_sorted:
+                    pkgs = wh_pkg_map[wh][:]
+                    while pkgs:
+                        available = capacity - current_count
+                        if len(pkgs) <= available:
+                            current_pkgs += pkgs
+                            current_whs.append(wh)
+                            current_count += len(pkgs)
+                            pkgs = []
+                        else:
+                            current_pkgs += pkgs[:available]
+                            current_whs.append(wh)
+                            pkgs = pkgs[available:]
+                            current_count += available
+
+                        if current_count >= capacity:
+                            person = f"Hc{person_idx + 1}_{tid}"
+                            for wh2 in set(current_whs):
+                                for p in [p for p in current_pkgs if p in wh_pkg_map[wh2]]:
+                                    assignments_train.append({
+                                        'package_id': p,
+                                        'warehouse_id': wh2,
+                                        'train_id': tid,
+                                        'person': person
+                                    })
+                            person_idx += 1
+                            current_pkgs = []
+                            current_whs = []
+                            current_count = 0
+
+                # Handle remaining partial person
+                if current_pkgs:
+                    person = f"Hc{person_idx + 1}_{tid}"
+                    for wh2 in set(current_whs):
+                        for p in [p for p in current_pkgs if p in wh_pkg_map[wh2]]:
+                            assignments_train.append({
+                                'package_id': p,
+                                'warehouse_id': wh2,
+                                'train_id': tid,
+                                'person': person
+                            })
+                    person_idx += 1
 
         all_assignments.extend(assignments_train)
 
