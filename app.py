@@ -188,7 +188,7 @@ st.title("🚉 Train–Warehouse Simulation")
 st.markdown(f"**Time: {clock_str}**")
 
 st.write("DEBUG: Visible human positions at current time")
-st.dataframe(visible)
+#st.dataframe(visible)
     
 # -------------------------
 # Status Message - 1
