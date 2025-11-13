@@ -10,7 +10,8 @@ from simulation.data_loader import load_all
 from simulation.train_movement import compute_train_positions
 from simulation.human_assignment import assign_packages
 from simulation.human_assignment import build_collector_summary
-from simulation.human_routes import build_route, interpolate_position
+from simulation.human_movement import compute_human_movements
+#from simulation.human_routes import build_route, interpolate_position
 from simulation.package_layout import compute_package_positions
 from simulation.visual_elements import draw_warehouses, draw_platforms, draw_trains, draw_packages, draw_humans
 
@@ -131,9 +132,19 @@ if assign_clicked or ("assignments_df" in st.session_state):
 package_positions = compute_package_positions(st.session_state.get("packages", pd.DataFrame()), warehouses, time)
 
 # -------------------------
-# Human positions (empty for now)
+# Human positions
 # -------------------------
-human_positions = []
+if "selected_train" in st.session_state and "per_train_detail" in st.session_state:
+    summary = build_collector_summary(st.session_state["selected_train"], st.session_state["per_train_detail"], warehouses, trains)
+    human_positions = compute_human_movements(
+        st.session_state["selected_train"],
+        summary,
+        warehouses,
+        trains,
+        points
+    )
+else:
+    human_positions = []
 
 # -------------------------
 # Train positions
