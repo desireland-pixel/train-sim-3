@@ -134,15 +134,29 @@ package_positions = compute_package_positions(st.session_state.get("packages", p
 # -------------------------
 # Human positions
 # -------------------------
+# Compute human movements
 if "selected_train" in st.session_state and "per_train_detail" in st.session_state:
-    summary = build_collector_summary(st.session_state["selected_train"], st.session_state["per_train_detail"], warehouses, trains)
-    human_positions = compute_human_movements(
+    summary = build_collector_summary(
+        st.session_state["selected_train"],
+        st.session_state["per_train_detail"],
+        warehouses,
+        trains
+    )
+    movement_df = compute_human_movements(
         st.session_state["selected_train"],
         summary,
         warehouses,
         trains,
         points
     )
+
+    # Filter for the current simulation time
+    current_time = time
+    # find closest movement <= current_time
+    visible = movement_df[movement_df["time"] <= current_time]
+    visible = visible.sort_values("time").groupby("person_id").last().reset_index()
+
+    human_positions = list(zip(visible["person_id"], visible["x"], visible["y"]))
 else:
     human_positions = []
 
