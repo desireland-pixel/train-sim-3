@@ -288,24 +288,39 @@ def assign_packages(packages_df, trains_df, warehouses_df, capacity):
     return assignments_df, summary_df, per_train_detail, metadata
 
 
-def build_collector_summary(selected_train, per_train_detail, warehouses_df, trains_df, job_start_allowance=1):
+def build_collector_summary(selected_train, per_train_detail, warehouses_df, trains_df,
+                            job_start_allowance=1, waiting_at_warehouse=1, waiting_at_platform=1):
+    """
+    Build a collector summary for the selected train.
+    Flexible for timing configuration (job start, waiting at warehouse/platform).
+    """
+
     # Extract train info
     train_info = trains_df[trains_df["train_id"] == selected_train].iloc[0]
     arrive_time = train_info["arrive_time"]
-    
+
+    # Flexible timing parameters
     earliest_start = arrive_time - 10
-    appearance_time = earliest_start - job_start_allowance  # configurable
-    
+    appearance_time = earliest_start - job_start_allowance  # Configurable
+    # (You can later factor waiting_at_warehouse/platform into travel durations)
+
     # Convert to HH:MM
     time_fmt = lambda t: f"{9 + t//60:02d}:{t%60:02d}"
     earliest_start_str = time_fmt(earliest_start)
     latest_finish_str = time_fmt(arrive_time)
 
-    # Build table
+    # Build base DataFrame for this train
+    if selected_train not in per_train_detail:
+        return {"df": pd.DataFrame(), "earliest_start_str": earliest_start_str,
+                "latest_finish_str": latest_finish_str, "appearance_time": appearance_time}
+
     train_df = per_train_detail[selected_train]
+
+    # --- Correct column names ---
+    # Expected columns: warehouse, person, packages, count
     grouped = (
-        train_df.groupby("Person")
-        .agg({"Warehouse": list, "Package IDs": lambda x: sum(x, []) if isinstance(x.iloc[0], list) else list(x)})
+        train_df.groupby("person")
+        .agg({"warehouse": list, "packages": lambda x: sum(x, []) if isinstance(x.iloc[0], list) else list(x)})
         .reset_index()
     )
 
@@ -315,25 +330,30 @@ def build_collector_summary(selected_train, per_train_detail, warehouses_df, tra
     def sort_warehouses(ws):
         return sorted(ws, key=lambda w: walk_map.get(w, 0), reverse=True)
 
-    grouped["Warehouse(s)"] = grouped["Warehouse"].apply(
+    grouped["Warehouse(s)"] = grouped["warehouse"].apply(
         lambda ws: ", ".join(sort_warehouses(ws))
     )
 
     def sorted_package_ids(person_row):
-        ws_sorted = sort_warehouses(person_row["Warehouse"])
+        ws_sorted = sort_warehouses(person_row["warehouse"])
         pkgs = []
         for w in ws_sorted:
-            subset = train_df[(train_df["Person"] == person_row["Person"]) & (train_df["Warehouse"] == w)]
-            pkgs += sum(subset["Package IDs"], [])
+            subset = train_df[(train_df["person"] == person_row["person"]) & (train_df["warehouse"] == w)]
+            pkgs += sum(subset["packages"], [])
         return ", ".join(pkgs)
 
     grouped["Package IDs"] = grouped.apply(sorted_package_ids, axis=1)
-    grouped = grouped[["Person", "Warehouse(s)", "Package IDs"]]
+
+    grouped = grouped[["person", "Warehouse(s)", "Package IDs"]]
+    grouped = grouped.rename(columns={"person": "Person"})
 
     summary = {
         "df": grouped,
         "earliest_start_str": earliest_start_str,
         "latest_finish_str": latest_finish_str,
         "appearance_time": appearance_time,
+        "waiting_at_warehouse": waiting_at_warehouse,
+        "waiting_at_platform": waiting_at_platform
     }
+
     return summary
