@@ -36,12 +36,13 @@ def compute_human_movements(
     waiting_area = points_df.loc[points_df["name"] == "WaitingArea"].iloc[0]
     station_entry = points_df.loc[points_df["name"] == "StationEntry"].iloc[0]
 
-    # find platform point (x,y)
-    platform_x = 200  # fallback default if no coordinate data
-    platform_y = 0
-    if "x" in trains_df.columns:
-        # optional: if you later include platform coords in trains_df
-        pass
+    # find platform point (x, y) dynamically
+    if {"x_platform", "y_platform"}.issubset(trains_df.columns):
+        platform_x = float(train_info["x_platform"])
+        platform_y = float(train_info["y_platform"])
+    else:
+        # fallback in case the columns are missing
+        platform_x, platform_y = 200, 0
 
     # warehouses data
     warehouse_pos = warehouses_df.set_index("warehouse_id")[["x", "y", "walk_time_to_platform"]].to_dict(orient="index")
