@@ -219,6 +219,10 @@ clock_str = f"{display_hour:02d}:{display_minute:02d}"
 st.title("🚉 Train–Warehouse Simulation")
 st.markdown(f"**Time: {clock_str}**")
 
+st.write("DEBUG: Human positions being plotted")
+for pos in human_positions:
+    st.write(pos)
+
 # -------------------------
 # Status Message - 1
 # -------------------------
