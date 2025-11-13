@@ -68,17 +68,26 @@ def compute_human_movements(
         current_x = waiting_area.x
         current_y = waiting_area.y
 
+        # ---------------------------
         # Initial appearance
+        # ---------------------------
+        status = "Appear (WaitingArea)"
+        active = False
+        temp_label = ""
         movements.append({
             "time": current_time,
             "person_id": person_id,
             "train_id": selected_train,
             "x": current_x,
             "y": current_y,
-            "status": "Appear (WaitingArea)"
+            "status": status,
+            "temp_label": temp_label,
+            "active": active
         })
 
+        # ---------------------------
         # Walk to each warehouse
+        # ---------------------------
         for w in warehouses_list:
             if w not in warehouse_pos:
                 continue
@@ -88,51 +97,83 @@ def compute_human_movements(
 
             # Move to warehouse
             current_time += walk_time
+            status = f"At {w}"
+            active = True
+            temp_label = f"Hc{person_id}_{selected_train}" if active else ""
             movements.append({
                 "time": current_time,
                 "person_id": person_id,
                 "train_id": selected_train,
                 "x": wx,
                 "y": wy,
-                "status": f"At {w}"
+                "status": status,
+                "temp_label": temp_label,
+                "active": active
             })
 
             # Wait at warehouse
             current_time += waiting_at_warehouse
 
-        # After last warehouse, move to platform (via StationEntry)
-        current_time += 1  # small step to StationEntry
+        # ---------------------------
+        # Move to StationEntry
+        # ---------------------------
+        current_time += 1
+        status = "At StationEntry"
+        active = True
+        temp_label = f"Hc{person_id}_{selected_train}" if active else ""
         movements.append({
             "time": current_time,
             "person_id": person_id,
             "train_id": selected_train,
             "x": station_entry.x,
             "y": station_entry.y,
-            "status": "At StationEntry"
+            "status": status,
+            "temp_label": temp_label,
+            "active": active
         })
 
+        # ---------------------------
+        # Move to Platform
+        # ---------------------------
         current_time += 1
+        status = f"At Platform {platform}"
+        active = True
+        temp_label = f"Hc{person_id}_{selected_train}" if active else ""
         movements.append({
             "time": current_time,
             "person_id": person_id,
             "train_id": selected_train,
             "x": platform_x,
             "y": platform_y,
-            "status": f"At Platform {platform}"
+            "status": status,
+            "temp_label": temp_label,
+            "active": active
         })
 
-        # Wait at platform
+        # ---------------------------
+        # Wait at Platform
+        # ---------------------------
         current_time += waiting_at_platform
 
-        # Return to waiting area
+        # ---------------------------
+        # Return to Waiting Area
+        # ---------------------------
         current_time += 1
+        status = "Return (WaitingArea)"
+        active = False
+        temp_label = ""
         movements.append({
             "time": current_time,
             "person_id": person_id,
             "train_id": selected_train,
             "x": waiting_area.x,
             "y": waiting_area.y,
-            "status": "Return (WaitingArea)"
+            "status": status,
+            "temp_label": temp_label,
+            "active": active
         })
 
+    # ---------------------------
+    # Return DataFrame
+    # ---------------------------
     return pd.DataFrame(movements)
