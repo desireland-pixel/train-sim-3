@@ -11,7 +11,6 @@ from simulation.train_movement import compute_train_positions
 from simulation.human_assignment import assign_packages
 from simulation.human_assignment import build_collector_summary
 from simulation.human_movement import compute_human_movements
-#from simulation.human_routes import build_route, interpolate_position
 from simulation.package_layout import compute_package_positions
 from simulation.visual_elements import draw_warehouses, draw_platforms, draw_trains, draw_packages, draw_humans
 
@@ -41,7 +40,7 @@ platforms = pd.DataFrame({
 # Sidebar controls
 # -------------------------
 st.sidebar.header("Simulation Settings")
-time = st.sidebar.number_input("Simulation time (minutes)", 0, 60, 0) #time control
+time = st.sidebar.number_input("Simulation time (minutes)", 0, 60, 0)
 max_packages_per_person = st.sidebar.number_input("Max packages a person can carry", 1, 10, 5)
 
 st.sidebar.markdown("### Orders per Train")
@@ -77,7 +76,6 @@ if time == 0:
 if all(o == 0 for o in train_orders):
     msg_orders = "Add no. of order(s) on the left side"
 
-# Detect change in orders
 if "prev_orders" not in st.session_state:
     st.session_state.prev_orders = train_orders.copy()
 elif st.session_state.prev_orders != train_orders:
@@ -134,40 +132,26 @@ package_positions = compute_package_positions(st.session_state.get("packages", p
 # -------------------------
 # Human positions
 # -------------------------
-
 human_positions = []
 
 if "per_train_detail" in st.session_state and st.session_state["per_train_detail"]:
     all_per_train_detail = st.session_state["per_train_detail"]
     
-    # Container for all movements
-    all_movements = []
-
-    for train_id in all_per_train_detail.keys():
-        summary = build_collector_summary(
+    # Compute movements for all trains
+    all_movements = [
+        compute_human_movements(
             train_id,
-            all_per_train_detail,
-            warehouses,
-            trains
-        )
-        movement_df = compute_human_movements(
-            train_id,
-            summary,
+            build_collector_summary(train_id, all_per_train_detail, warehouses, trains),
             warehouses,
             trains,
             points
         )
-        all_movements.append(movement_df)
+        for train_id in all_per_train_detail.keys()
+    ]
 
-    # Combine all movements
     if all_movements:
         movement_df = pd.concat(all_movements, ignore_index=True)
-
-        # Filter for the current simulation time
-        current_time = time
-        visible = movement_df[movement_df["time"] <= current_time]
-        visible = visible.sort_values("time").groupby("person_id").last().reset_index()
-
+        visible = movement_df[movement_df["time"] <= time].sort_values("time").groupby("person_id").last().reset_index()
         human_positions = list(zip(visible["person_id"], visible["x"], visible["y"]))
 
 # -------------------------
@@ -188,15 +172,12 @@ clock_str = f"{display_hour:02d}:{display_minute:02d}"
 st.title("🚉 Train–Warehouse Simulation")
 st.markdown(f"**Time: {clock_str}**")
 
-st.write("DEBUG: Visible human positions at current time")
-#st.dataframe(visible)
-    
 # -------------------------
 # Status Message - 1
 # -------------------------
 if msg_time:
     st.info(msg_time)
-    
+
 # -------------------------
 # PLOTLY FIGURE
 # -------------------------
@@ -227,6 +208,8 @@ if msg_orders:
     st.warning(msg_orders)
 if msg_generated:
     st.success(msg_generated)
+if msg_assigned:
+    st.success(msg_assigned)
 
 # -------------------------
 # Show generated packages
@@ -239,38 +222,24 @@ if "packages" in st.session_state and not st.session_state["packages"].empty:
     st.markdown("**Generated Packages:**")
     st.dataframe(pkg_text)
 
-# -------------------------
-# Show assignment message
-# -------------------------
-if msg_assigned:
-    st.success(msg_assigned)
-
 # -----------------------------------------
 # Determine the train list that has orders
 # -----------------------------------------
 ordered_train_ids_with_details = []
-
 if "per_train_detail" in st.session_state:
     per_train_detail = st.session_state["per_train_detail"]
-    
     if per_train_detail:
-        # Filter the original list to only include those present in per_train_detail
-        # This preserves the original order (A C B E D) while only selecting the valid ones (e.g., A C B)
         ordered_train_ids_with_details = [
             train_id for train_id in train_ids if train_id in per_train_detail
         ]
-        
+
 # -------------------------------------------------------------
 # Assignment Summary (train × warehouse)
 # -------------------------------------------------------------
 if "summary_df" in st.session_state and not st.session_state["summary_df"].empty:
     st.markdown("**Assignment Summary (train × warehouse)**")
-    
     summary_df_display = st.session_state["summary_df"].fillna(0).set_index('train_id')
-    
-    # Use the common strategy list to enforce order
     summary_df_display = summary_df_display.reindex(ordered_train_ids_with_details)
-    
     st.dataframe(summary_df_display)
 
 # -------------------------------------------------------------
@@ -278,16 +247,12 @@ if "summary_df" in st.session_state and not st.session_state["summary_df"].empty
 # -------------------------------------------------------------
 if ordered_train_ids_with_details:
     st.markdown("**Select Train to see details:**")
-    
-    # Create columns exactly matching the common list length
     cols = st.columns(len(ordered_train_ids_with_details))
-    
-    # Iterate over the common list
     for i, train_id in enumerate(ordered_train_ids_with_details):
         with cols[i]:
             if st.button(f"🚆 {train_id}", key=f"train_btn_{train_id}"):
                 st.session_state["selected_train"] = train_id
-        
+
     selected_train = st.session_state.get("selected_train", list(per_train_detail.keys())[0])
     detail = per_train_detail.get(selected_train, pd.DataFrame())
     if not detail.empty:
@@ -305,22 +270,11 @@ if ordered_train_ids_with_details:
 # -------------------------------------------------------------
 # Details for collectors
 # -------------------------------------------------------------
-if (
-    "per_train_detail" in st.session_state
-    and st.session_state["per_train_detail"]
-    and ordered_train_ids_with_details
-):
-    per_train_detail = st.session_state["per_train_detail"]
-    
-    # Use existing selected_train, or default to the first available one
+if ordered_train_ids_with_details:
     selected_train = st.session_state.get("selected_train", ordered_train_ids_with_details[0])
-    
-    # Make sure the selected train exists in per_train_detail
     if selected_train in per_train_detail:
         summary = build_collector_summary(selected_train, per_train_detail, warehouses, trains)
-        
         st.markdown(f"### Details for {selected_train} collectors: (Total {len(summary['df'])} persons)")
         st.write(f"Earliest start time: {summary['earliest_start_str']}")
         st.write(f"Latest finish time: {summary['latest_finish_str']}")
         st.dataframe(summary["df"])
-
