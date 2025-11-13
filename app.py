@@ -144,30 +144,63 @@ human_positions = []
 
 if "per_train_detail" in st.session_state and st.session_state["per_train_detail"]:
     all_per_train_detail = st.session_state["per_train_detail"]
-    
-    # Compute movements for all trains
-    all_movements = [
-        compute_human_movements(
+
+    # Prepare to collect movements for all trains and reuse registry
+    all_movements = []
+    registry = st.session_state.get("human_registry", {})
+    next_id = st.session_state.get("next_human_id", 1)
+
+    for train_id in all_per_train_detail.keys():
+        summary = build_collector_summary(train_id, all_per_train_detail, warehouses, trains)
+
+        # Call compute_human_movements. It may return either:
+        #  - a DataFrame (old behavior) or
+        #  - a tuple (movement_df, updated_registry, updated_next_id) (new behavior)
+        result = compute_human_movements(
             train_id,
-            build_collector_summary(train_id, all_per_train_detail, warehouses, trains),
+            summary,
             warehouses,
             trains,
-            points
+            points,
+            human_registry=registry,
+            next_human_id=next_id
         )
-        for train_id in all_per_train_detail.keys()
-    ]
 
+        # Handle both return styles safely
+        if isinstance(result, tuple) and len(result) == 3:
+            movement_df, registry, next_id = result
+        else:
+            movement_df = result
+
+        if movement_df is None or movement_df.empty:
+            continue
+
+        all_movements.append(movement_df)
+
+    # Persist registry back to session_state (only if it changed)
+    st.session_state["human_registry"] = registry
+    st.session_state["next_human_id"] = next_id
+
+    # Combine and filter all movements to current time
     if all_movements:
         movement_df = pd.concat(all_movements, ignore_index=True)
-        visible = movement_df[movement_df["time"] <= time].sort_values("time").groupby("person_id").last().reset_index()
-        human_positions = list(zip(
-            visible["person_id"],
-            visible["x"],
-            visible["y"],
-            visible["temp_label"],
-            visible["active"]
-        ))
-#human_positions = list(zip(visible["person_id"], visible["x"], visible["y"]))
+
+        visible = movement_df[movement_df["time"] <= time]
+        if not visible.empty:
+            # choose last known position per permanent_label (so permanent identity H1,H2,...)
+            # If your movement rows use 'permanent_label' column; fallback to 'person_id' if not present.
+            group_col = "permanent_label" if "permanent_label" in visible.columns else "person_id"
+            visible = visible.sort_values("time").groupby(group_col).last().reset_index()
+
+            # Build tuples expected by draw_humans:
+            # (permanent_label_or_person_id, x, y, temp_label, active)
+            perm = visible[group_col].tolist()
+            xs = visible["x"].tolist()
+            ys = visible["y"].tolist()
+            temp_labels = visible["temp_label"].tolist() if "temp_label" in visible.columns else visible["person_id"].tolist()
+            actives = visible["active"].tolist() if "active" in visible.columns else [True] * len(visible)
+
+            human_positions = list(zip(perm, xs, ys, temp_labels, actives))
 
 # -------------------------
 # Train positions
