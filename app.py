@@ -152,7 +152,14 @@ if "per_train_detail" in st.session_state and st.session_state["per_train_detail
     if all_movements:
         movement_df = pd.concat(all_movements, ignore_index=True)
         visible = movement_df[movement_df["time"] <= time].sort_values("time").groupby("person_id").last().reset_index()
-        human_positions = list(zip(visible["person_id"], visible["x"], visible["y"]))
+        human_positions = list(zip(
+            visible["person_id"],
+            visible["x"],
+            visible["y"],
+            visible["temp_label"],
+            visible["active"]
+        ))
+#human_positions = list(zip(visible["person_id"], visible["x"], visible["y"]))
 
 # -------------------------
 # Train positions
