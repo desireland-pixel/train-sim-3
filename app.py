@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from simulation.data_loader import load_all
 from simulation.train_movement import compute_train_positions
 from simulation.human_assignment import assign_packages
+from simulation.human_assignment import build_collector_summary
 from simulation.human_routes import build_route, interpolate_position
 from simulation.package_layout import compute_package_positions
 from simulation.visual_elements import draw_warehouses, draw_platforms, draw_trains, draw_packages, draw_humans
@@ -266,7 +267,7 @@ if ordered_train_ids_with_details:
 # -------------------------------------------------------------
 # Details for collectors
 # -------------------------------------------------------------
-from simulation.human_assignment import build_collector_summary
+
 
 summary = build_collector_summary(selected_train, per_train_detail, warehouses, trains)
 st.markdown(f"### Details for {selected_train} collectors: (Total {len(summary['df'])} persons)")
