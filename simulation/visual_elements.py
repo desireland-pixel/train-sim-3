@@ -18,7 +18,7 @@ def draw_platforms(fig, platforms_df):
         x=platforms_df.x, y=platforms_df.y,
         mode="markers+text",
         text=[f"P{i}" for i in platforms_df.platform],
-        textfont=dict(color="black"),
+        textfont=dict(color="white"),
         name="Platforms",
         marker=dict(size=18, color="blue")
     ))
