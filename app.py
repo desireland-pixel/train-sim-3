@@ -200,6 +200,8 @@ if "selected_train" in st.session_state and "per_train_detail" in st.session_sta
     else:
         st.warning("No human movement data generated.")
 
+st.write("DEBUG: Full human movement DataFrame")
+st.dataframe(movement_df)
 
 # -------------------------
 # Train positions
@@ -219,10 +221,9 @@ clock_str = f"{display_hour:02d}:{display_minute:02d}"
 st.title("🚉 Train–Warehouse Simulation")
 st.markdown(f"**Time: {clock_str}**")
 
-st.write("DEBUG: Human positions being plotted")
-for pos in human_positions:
-    st.write(pos)
-
+st.write("DEBUG: Visible human positions at current time")
+st.dataframe(visible)
+    
 # -------------------------
 # Status Message - 1
 # -------------------------
