@@ -8,10 +8,13 @@ def compute_human_movements(
     warehouses_df,
     trains_df,
     points_df,
+    human_registry=None,
+    next_human_id=1,
     job_start_allowance=1,
     waiting_at_warehouse=1,
     waiting_at_platform=1
 ):
+
     """
     Compute movement timeline for all human collectors assigned to a specific train.
     """
@@ -54,7 +57,17 @@ def compute_human_movements(
     # Iterate over each human collector
     # ---------------------------
     for _, row in df.iterrows():
-        person_id = row["Person"]
+        person_id = row["Person"]  # e.g. "Hc1_RE1"
+
+        # Try to find existing permanent label for this temp collector
+        if person_id in human_registry:
+            permanent_label = human_registry[person_id]
+        else:
+            # Assign a new permanent label
+            permanent_label = f"H{next_human_id}"
+            human_registry[person_id] = permanent_label
+            next_human_id += 1
+
         warehouses_list = [w.strip() for w in row["Warehouse(s)"].split(",") if w.strip()]
         warehouses_list = warehouses_list[::-1]  # reverse to match desired order if needed
         # We'll sort warehouses based on walk_time_to_platform descending (highest first)
@@ -76,12 +89,12 @@ def compute_human_movements(
         temp_label = ""
         movements.append({
             "time": current_time,
-            "person_id": person_id,
+            "permanent_label": permanent_label,
             "train_id": selected_train,
             "x": current_x,
             "y": current_y,
             "status": status,
-            "temp_label": temp_label,
+            "temp_label": person_id,
             "active": active
         })
 
@@ -102,12 +115,12 @@ def compute_human_movements(
             temp_label = f"Hc{person_id}_{selected_train}" if active else ""
             movements.append({
                 "time": current_time,
-                "person_id": person_id,
+                "permanent_label": permanent_label,
                 "train_id": selected_train,
                 "x": wx,
                 "y": wy,
                 "status": status,
-                "temp_label": temp_label,
+                "temp_label": person_id,
                 "active": active
             })
 
@@ -123,12 +136,12 @@ def compute_human_movements(
         temp_label = f"Hc{person_id}_{selected_train}" if active else ""
         movements.append({
             "time": current_time,
-            "person_id": person_id,
+            "permanent_label": permanent_label,
             "train_id": selected_train,
             "x": station_entry.x,
             "y": station_entry.y,
             "status": status,
-            "temp_label": temp_label,
+            "temp_label": person_id,
             "active": active
         })
 
@@ -141,12 +154,12 @@ def compute_human_movements(
         temp_label = f"Hc{person_id}_{selected_train}" if active else ""
         movements.append({
             "time": current_time,
-            "person_id": person_id,
+            "permanent_label": permanent_label,
             "train_id": selected_train,
             "x": platform_x,
             "y": platform_y,
             "status": status,
-            "temp_label": temp_label,
+            "temp_label": person_id,
             "active": active
         })
 
@@ -164,16 +177,16 @@ def compute_human_movements(
         temp_label = ""
         movements.append({
             "time": current_time,
-            "person_id": person_id,
+            "permanent_label": permanent_label,
             "train_id": selected_train,
             "x": waiting_area.x,
             "y": waiting_area.y,
             "status": status,
-            "temp_label": temp_label,
+            "temp_label": person_id,
             "active": active
         })
 
     # ---------------------------
     # Return DataFrame
     # ---------------------------
-    return pd.DataFrame(movements)
+    return pd.DataFrame(movements), human_registry, next_human_id
