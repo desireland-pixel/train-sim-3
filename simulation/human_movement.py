@@ -1,56 +1,137 @@
-# simulation/human_routes.py
-import math
+# simulation/human_movement.py
+import pandas as pd
+import numpy as np
 
-def get_zone_for_warehouse(warehouse_id):
-    if warehouse_id in ["W1", "W2"]:
-        return "Zone1"
-    if warehouse_id in ["W3", "W4"]:
-        return "Zone2"
-    if warehouse_id in ["W5", "W6"]:
-        return "Zone3"
-    return None
+def compute_human_movements(
+    selected_train,
+    collector_summary,
+    warehouses_df,
+    trains_df,
+    points_df,
+    job_start_allowance=1,
+    waiting_at_warehouse=1,
+    waiting_at_platform=1
+):
+    """
+    Compute movement timeline for all human collectors assigned to a specific train.
+    """
 
-def build_route(warehouse_id, platform_id, points_df, warehouses_df):
-    zone = get_zone_for_warehouse(warehouse_id)
-    zone_entry = points_df.loc[points_df.name == f"{zone}Entry"].iloc[0]
-    waiting_area = points_df.loc[points_df.name == "WaitingArea"].iloc[0]
-    station_entry = points_df.loc[points_df.name == "StationEntry"].iloc[0]
-    wh = warehouses_df.loc[warehouses_df.warehouse_id == warehouse_id].iloc[0]
+    # ---------------------------
+    # Prepare key data
+    # ---------------------------
+    if collector_summary is None or collector_summary.get("df") is None:
+        return pd.DataFrame()
 
-    platform_map = {
-        1: (200, 150),
-        2: (200, 100),
-        3: (200, 50),
-        4: (200, 0),
-        5: (200, -50)
-    }
-    x_platform, y_platform = platform_map[int(platform_id)]
+    df = collector_summary["df"]
+    train_info = trains_df.loc[trains_df["train_id"] == selected_train].iloc[0]
+    arrive_time = int(train_info["arrive_time"])
+    platform = str(train_info["platform"])
 
-    route = [
-        ("WaitingArea", "ZoneEntry", (float(waiting_area.x), float(waiting_area.y)), (float(zone_entry.x), float(zone_entry.y))),
-        ("ZoneEntry", warehouse_id, (float(zone_entry.x), float(zone_entry.y)), (float(wh.x), float(wh.y))),
-        (warehouse_id, "StationEntry", (float(wh.x), float(wh.y)), (float(station_entry.x), float(station_entry.y))),
-        ("StationEntry", f"P{platform_id}", (float(station_entry.x), float(station_entry.y)), (x_platform, y_platform))
-    ]
-    return route
+    # timing
+    earliest_start = arrive_time - 10
+    appearance_time = earliest_start - job_start_allowance
+    latest_finish = arrive_time
 
-def interpolate_position(route, time_since_start, walk_speed):
-    total_distance = sum(math.dist(seg[2], seg[3]) for seg in route)
-    if walk_speed <= 0:
-        return route[0][2]
-    total_time = total_distance / walk_speed
-    t = min(max(0, time_since_start), total_time)
+    # static points
+    waiting_area = points_df.loc[points_df["name"] == "WaitingArea"].iloc[0]
+    station_entry = points_df.loc[points_df["name"] == "StationEntry"].iloc[0]
 
-    elapsed = 0.0
-    for _, _, (x1, y1), (x2, y2) in route:
-        seg_dist = math.dist((x1, y1), (x2, y2))
-        seg_time = seg_dist / walk_speed if walk_speed > 0 else float('inf')
-        if elapsed + seg_time >= t:
-            if seg_time == 0:
-                return (x2, y2)
-            frac = (t - elapsed) / seg_time
-            x = x1 + frac * (x2 - x1)
-            y = y1 + frac * (y2 - y1)
-            return (x, y)
-        elapsed += seg_time
-    return route[-1][3]
+    # find platform point (x,y)
+    platform_x = 200  # fallback default if no coordinate data
+    platform_y = 0
+    if "x" in trains_df.columns:
+        # optional: if you later include platform coords in trains_df
+        pass
+
+    # warehouses data
+    warehouse_pos = warehouses_df.set_index("warehouse_id")[["x", "y", "walk_time_to_platform"]].to_dict(orient="index")
+
+    # result container
+    movements = []
+
+    # ---------------------------
+    # Iterate over each human collector
+    # ---------------------------
+    for _, row in df.iterrows():
+        person_id = row["Person"]
+        warehouses_list = [w.strip() for w in row["Warehouse(s)"].split(",") if w.strip()]
+        warehouses_list = warehouses_list[::-1]  # reverse to match desired order if needed
+        # We'll sort warehouses based on walk_time_to_platform descending (highest first)
+        warehouses_list = sorted(
+            warehouses_list,
+            key=lambda w: warehouse_pos[w]["walk_time_to_platform"] if w in warehouse_pos else 0,
+            reverse=True
+        )
+
+        current_time = appearance_time
+        current_x = waiting_area.x
+        current_y = waiting_area.y
+
+        # Initial appearance
+        movements.append({
+            "time": current_time,
+            "person_id": person_id,
+            "train_id": selected_train,
+            "x": current_x,
+            "y": current_y,
+            "status": "Appear (WaitingArea)"
+        })
+
+        # Walk to each warehouse
+        for w in warehouses_list:
+            if w not in warehouse_pos:
+                continue
+
+            wx, wy = warehouse_pos[w]["x"], warehouse_pos[w]["y"]
+            walk_time = warehouse_pos[w]["walk_time_to_platform"]  # we can approximate for now
+
+            # Move to warehouse
+            current_time += walk_time
+            movements.append({
+                "time": current_time,
+                "person_id": person_id,
+                "train_id": selected_train,
+                "x": wx,
+                "y": wy,
+                "status": f"At {w}"
+            })
+
+            # Wait at warehouse
+            current_time += waiting_at_warehouse
+
+        # After last warehouse, move to platform (via StationEntry)
+        current_time += 1  # small step to StationEntry
+        movements.append({
+            "time": current_time,
+            "person_id": person_id,
+            "train_id": selected_train,
+            "x": station_entry.x,
+            "y": station_entry.y,
+            "status": "At StationEntry"
+        })
+
+        current_time += 1
+        movements.append({
+            "time": current_time,
+            "person_id": person_id,
+            "train_id": selected_train,
+            "x": platform_x,
+            "y": platform_y,
+            "status": f"At Platform {platform}"
+        })
+
+        # Wait at platform
+        current_time += waiting_at_platform
+
+        # Return to waiting area
+        current_time += 1
+        movements.append({
+            "time": current_time,
+            "person_id": person_id,
+            "train_id": selected_train,
+            "x": waiting_area.x,
+            "y": waiting_area.y,
+            "status": "Return (WaitingArea)"
+        })
+
+    return pd.DataFrame(movements)
