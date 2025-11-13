@@ -170,11 +170,6 @@ if "per_train_detail" in st.session_state and st.session_state["per_train_detail
 
         human_positions = list(zip(visible["person_id"], visible["x"], visible["y"]))
 
-    # Optional: DEBUG table
-    st.write("DEBUG: Visible human positions at current time")
-    st.dataframe(visible)
-
-
 # -------------------------
 # Train positions
 # -------------------------
