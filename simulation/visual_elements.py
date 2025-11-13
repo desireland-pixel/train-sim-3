@@ -48,13 +48,28 @@ def draw_packages(fig, package_positions):
         ))
 
 def draw_humans(fig, human_positions):
-    for person_id, x, y in human_positions:
+    # Permanent label (black)
+    for person_id, x, y, temp_label, active in human_positions:
         fig.add_trace(go.Scatter(
             x=[x], y=[y],
             mode="markers+text",
             text=[person_id],
             textposition="top center",
+            textfont=dict(color="black"),
             marker=dict(size=10, color="orange", symbol="circle"),
             name="Humans",
             showlegend=False
         ))
+
+    # Temporary label (gray or blue)
+    for person_id, x, y, temp_label, active in human_positions:
+        if temp_label and active:
+            fig.add_trace(go.Scatter(
+                x=[x], y=[y],
+                mode="text",
+                text=[temp_label],
+                textposition="bottom center",
+                textfont=dict(color="blue"),
+                showlegend=False
+            ))
+
