@@ -18,6 +18,7 @@ def draw_platforms(fig, platforms_df):
         x=platforms_df.x, y=platforms_df.y,
         mode="markers+text",
         text=[f"P{i}" for i in platforms_df.platform],
+        textfont=dict(color="black"),
         name="Platforms",
         marker=dict(size=18, color="blue")
     ))
@@ -54,7 +55,7 @@ def draw_humans(fig, human_positions):
             x=[x], y=[y],
             mode="markers+text",
             text=[person_id],
-            textposition="top center",
+            textposition="middle center",
             textfont=dict(color="black"),
             marker=dict(size=10, color="orange", symbol="circle"),
             name="Humans",
