@@ -83,6 +83,14 @@ elif st.session_state.prev_orders != train_orders:
     st.session_state.prev_orders = train_orders.copy()
 
 # -------------------------
+# Initialize human registry
+# -------------------------
+if "human_registry" not in st.session_state:
+    st.session_state["human_registry"] = {}
+if "next_human_id" not in st.session_state:
+    st.session_state["next_human_id"] = 1
+
+# -------------------------
 # Package generation
 # -------------------------
 if generate_clicked:
