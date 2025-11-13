@@ -134,31 +134,72 @@ package_positions = compute_package_positions(st.session_state.get("packages", p
 # -------------------------
 # Human positions
 # -------------------------
-# Compute human movements
+# -------------------------
+# Human positions
+# -------------------------
+human_positions = []
+
 if "selected_train" in st.session_state and "per_train_detail" in st.session_state:
+    selected_train = st.session_state["selected_train"]
+    per_train_detail = st.session_state["per_train_detail"]
+
+    # Build collector summary
     summary = build_collector_summary(
-        st.session_state["selected_train"],
-        st.session_state["per_train_detail"],
+        selected_train,
+        per_train_detail,
         warehouses,
         trains
     )
+
+    # Compute movements
     movement_df = compute_human_movements(
-        st.session_state["selected_train"],
+        selected_train,
         summary,
         warehouses,
         trains,
         points
     )
 
-    # Filter for the current simulation time
-    current_time = time
-    # find closest movement <= current_time
-    visible = movement_df[movement_df["time"] <= current_time]
-    visible = visible.sort_values("time").groupby("person_id").last().reset_index()
+    if not movement_df.empty:
+        # DEBUG: inspect movement DF
+        st.write("DEBUG Human movement DF (first 10 rows):")
+        st.dataframe(movement_df.head(10))
 
-    human_positions = list(zip(visible["person_id"], visible["x"], visible["y"]))
-else:
-    human_positions = []
+        # TEMP: show all humans to verify coordinates
+        st.write(
+            f"DEBUG: X range: {movement_df['x'].min()} → {movement_df['x'].max()}, "
+            f"Y range: {movement_df['y'].min()} → {movement_df['y'].max()}"
+        )
+        st.write(
+            f"DEBUG: Time range: {movement_df['time'].min()} → {movement_df['time'].max()}"
+        )
+
+        # Filter human positions for current simulation time
+        current_time = time  # sidebar time input
+        visible = movement_df[movement_df["time"] <= current_time]
+
+        if not visible.empty:
+            # Take last known position per person
+            visible = (
+                visible.sort_values("time")
+                .groupby("person_id")
+                .last()
+                .reset_index()
+            )
+            human_positions = list(zip(visible["person_id"], visible["x"], visible["y"]))
+        else:
+            # fallback: show all humans at earliest position
+            first_positions = (
+                movement_df.sort_values("time")
+                .groupby("person_id")
+                .first()
+                .reset_index()
+            )
+            human_positions = list(zip(first_positions["person_id"], first_positions["x"], first_positions["y"]))
+
+    else:
+        st.warning("No human movement data generated.")
+
 
 # -------------------------
 # Train positions
