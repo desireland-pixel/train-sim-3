@@ -286,3 +286,54 @@ def assign_packages(packages_df, trains_df, warehouses_df, capacity):
     }
 
     return assignments_df, summary_df, per_train_detail, metadata
+
+
+def build_collector_summary(selected_train, per_train_detail, warehouses_df, trains_df, job_start_allowance=1):
+    # Extract train info
+    train_info = trains_df[trains_df["train_id"] == selected_train].iloc[0]
+    arrive_time = train_info["arrive_time"]
+    
+    earliest_start = arrive_time - 10
+    appearance_time = earliest_start - job_start_allowance  # configurable
+    
+    # Convert to HH:MM
+    time_fmt = lambda t: f"{9 + t//60:02d}:{t%60:02d}"
+    earliest_start_str = time_fmt(earliest_start)
+    latest_finish_str = time_fmt(arrive_time)
+
+    # Build table
+    train_df = per_train_detail[selected_train]
+    grouped = (
+        train_df.groupby("Person")
+        .agg({"Warehouse": list, "Package IDs": lambda x: sum(x, []) if isinstance(x.iloc[0], list) else list(x)})
+        .reset_index()
+    )
+
+    # Sort warehouses by walk_time_to_platform descending
+    walk_map = dict(zip(warehouses_df["warehouse_id"], warehouses_df["walk_time_to_platform"]))
+
+    def sort_warehouses(ws):
+        return sorted(ws, key=lambda w: walk_map.get(w, 0), reverse=True)
+
+    grouped["Warehouse(s)"] = grouped["Warehouse"].apply(
+        lambda ws: ", ".join(sort_warehouses(ws))
+    )
+
+    def sorted_package_ids(person_row):
+        ws_sorted = sort_warehouses(person_row["Warehouse"])
+        pkgs = []
+        for w in ws_sorted:
+            subset = train_df[(train_df["Person"] == person_row["Person"]) & (train_df["Warehouse"] == w)]
+            pkgs += sum(subset["Package IDs"], [])
+        return ", ".join(pkgs)
+
+    grouped["Package IDs"] = grouped.apply(sorted_package_ids, axis=1)
+    grouped = grouped[["Person", "Warehouse(s)", "Package IDs"]]
+
+    summary = {
+        "df": grouped,
+        "earliest_start_str": earliest_start_str,
+        "latest_finish_str": latest_finish_str,
+        "appearance_time": appearance_time,
+    }
+    return summary
