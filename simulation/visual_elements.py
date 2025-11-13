@@ -54,7 +54,7 @@ def draw_humans(fig, human_positions):
             x=[x], y=[y],
             mode="markers+text",
             text=[person_id],
-            textposition="top center",
+            textposition="center",
             textfont=dict(color="black"),
             marker=dict(size=10, color="orange", symbol="circle"),
             name="Humans",
@@ -68,7 +68,7 @@ def draw_humans(fig, human_positions):
                 x=[x], y=[y],
                 mode="text",
                 text=[temp_label],
-                textposition="bottom center",
+                textposition="top center",
                 textfont=dict(color="blue"),
                 showlegend=False
             ))
