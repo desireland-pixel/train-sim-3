@@ -267,10 +267,22 @@ if ordered_train_ids_with_details:
 # -------------------------------------------------------------
 # Details for collectors
 # -------------------------------------------------------------
-
-summary = build_collector_summary(selected_train, per_train_detail, warehouses, trains)
-st.markdown(f"### Details for {selected_train} collectors: (Total {len(summary['df'])} persons)")
-st.write(f"Earliest start time: {summary['earliest_start_str']}")
-st.write(f"Latest finish time: {summary['latest_finish_str']}")
-st.dataframe(summary["df"])
+if (
+    "per_train_detail" in st.session_state
+    and st.session_state["per_train_detail"]
+    and ordered_train_ids_with_details
+):
+    per_train_detail = st.session_state["per_train_detail"]
+    
+    # Use existing selected_train, or default to the first available one
+    selected_train = st.session_state.get("selected_train", ordered_train_ids_with_details[0])
+    
+    # Make sure the selected train exists in per_train_detail
+    if selected_train in per_train_detail:
+        summary = build_collector_summary(selected_train, per_train_detail, warehouses, trains)
+        
+        st.markdown(f"### Details for {selected_train} collectors: (Total {len(summary['df'])} persons)")
+        st.write(f"Earliest start time: {summary['earliest_start_str']}")
+        st.write(f"Latest finish time: {summary['latest_finish_str']}")
+        st.dataframe(summary["df"])
 
