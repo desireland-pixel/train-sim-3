@@ -69,7 +69,7 @@ def draw_humans(fig, human_positions):
                 x=[x], y=[y],
                 mode="text",
                 text=[temp_label],
-                textposition="bottom center"+10,
+                textposition="bottom center",
                 textfont=dict(color="blue"),
                 showlegend=False
             ))
