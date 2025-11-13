@@ -262,3 +262,15 @@ if ordered_train_ids_with_details:
         })
         st.markdown(f"**Details for {selected_train}:**")
         st.dataframe(detail_disp)
+
+# -------------------------------------------------------------
+# Details for collectors
+# -------------------------------------------------------------
+from simulation.human_assignment import build_collector_summary
+
+summary = build_collector_summary(selected_train, per_train_detail, warehouses, trains)
+st.markdown(f"### Details for {selected_train} collectors: (Total {len(summary['df'])} persons)")
+st.write(f"Earliest start time: {summary['earliest_start_str']}")
+st.write(f"Latest finish time: {summary['latest_finish_str']}")
+st.dataframe(summary["df"])
+
